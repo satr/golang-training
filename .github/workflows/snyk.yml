@@ -1,0 +1,52 @@
+name: Snyk Security Scan
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "30 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snyk:
+    # Only expose the token for non-PR runs on the repository's default branch.
+    if: >-
+      ${{
+        github.event_name != 'pull_request' &&
+        github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+      }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: 1.27.1
+          cache: true
+
+      - name: Install verified Snyk CLI
+        env:
+          SNYK_VERSION: 1.1307.2
+          SNYK_SHA256: 40453156449604129f6ed5cb98eb0c9aca27facd7dd8161d9c9828618b62e703
+        run: |
+          curl --fail --location --silent --show-error \
+            --output "$RUNNER_TEMP/snyk" \
+            "https://github.com/snyk/cli/releases/download/v${SNYK_VERSION}/snyk-linux"
+          echo "${SNYK_SHA256}  ${RUNNER_TEMP}/snyk" | sha256sum --check
+          chmod +x "$RUNNER_TEMP/snyk"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Scan with Snyk
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "SNYK_TOKEN is not configured; skipping scan."
+            exit 0
+          fi
+          snyk test --severity-threshold=high

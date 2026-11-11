@@ -1,0 +1,19 @@
+# Go build and test output
+*.test
+*.out
+coverage.out
+bin/
+.bin/
+
+# Local state and data
+*.db
+*.sqlite
+*.sqlite3
+.env
+.env.*
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+
